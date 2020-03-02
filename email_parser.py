@@ -1,43 +1,58 @@
 import argparse
+from pprint import pprint
 from typing import List
 # Email Parser
 
 def single_line_parser(line: str) -> List:
-    return line.split(":", 1)
+    """Return a two element list if the input of the line is
+        <key>: <value>
 
-def is_multiline(parsed_line: List) -> bool:
-    return len(parsed_line[0]) > 0 and not parsed_line[1]
+        Returns a single element list if the input of the line is
+        <key>:
+        """
+    if line and line[0] in ["(","-","_"," "]:
+        return []
+    o = line.split(":", 1)
+    if len(o) == 2 and o[1] == '':
+        return [o[0]]
+    return o
+
+
+def next_line_idx(i: int, lines: List) -> int:
+    """Return the index of the next non-empty line."""
+    i += 1
+    while not lines[i] and i < len(lines):
+        i += 1
+    return i
+
+def is_pair(l: List) -> bool:
+    return len(l) == 2
+
+def is_single(l: List) -> bool:
+    return len(l) == 1 and l[0] != ''
+
 
 
 def email_parser(body: str)-> dict:
-    out = {}
     lines = body.splitlines()
+    out = dict()
     i = 0
-    label = ''
-    val = ''
     while i < len(lines):
-        print(lines[i])
-        if ":" not in lines[i]:
-            pass
-        else:
-            slp = single_line_parser(lines[i])
-            if len(slp) == 2 and slp[1]:
-                out[slp[0]] = slp[1]
-            elif is_multiline(slp):
-                subsection = ""
-                while len(lines[i]) > 1:
-                    subsection += lines[i]
-                    i += 1
-                sub_keys = email_parser(subsection)
-                if len(sub_keys) == 1:
-                    # This is a single line key value pair
-                    # that is split.
-                    out[slp[0]] = sub_keys[slp[0]]
-                else:
-                    out[slp[0]] = sub_keys
-        i += 1
+        slp = single_line_parser(lines[i])
+        if is_pair(slp):
+            out[slp[0]] = slp[1]
+        elif is_single(slp):
+            i = next_line_idx(i, lines)
+            line = lines[i]
+            parsed_line = single_line_parser(line)
+            if is_single(parsed_line):
+                out[slp[0]] = parsed_line[0]
+            elif is_pair(parsed_line):
+                out[slp[0]] = "SOMETHING"
 
+        i += 1
     return out
+
 
 
 if __name__ == '__main__':
@@ -46,7 +61,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
     with open(args.filepath) as fh:
         body = fh.read()
-    print(email_parser(body))
+    pprint(email_parser(body))
 
 
 
