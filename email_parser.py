@@ -60,38 +60,40 @@ def email_parser(body: str) -> dict:
     while i < len(lines):
         line = lines[i]
         trigger = re.match(r'^([^:]+):', line.lower())
-        if trigger and trigger[1] in PARSE_TRIGGERS.keys():
-           trg = trigger[1]
-           if PARSE_TRIGGERS[trg] is ParseTypes.SINGLE:
-                # Format is <key>:<value>
-                # or
-                # <key>:
-                # <blank_line>[0,1]
-                # <value> - Assuming only a single line for now.
-                slp = single_line_parser(line)
-                if is_pair(slp):
-                    # <k>:<v>
-                    out[trg] = slp[1]
-                elif is_single(slp):
-                    # <k>: \n\n?<v>\n
-                    i += 1
-                    while not lines[i]:
-                        i += 1
-                    out[trg] = lines[i]
-           if PARSE_TRIGGERS[trg] is ParseTypes.MULTI:
-                # Assume sub values are either
-                # single line <k>:<v>
-                # or a comment
-                # The multi-block ends with a new line
-                out[trg] = dict()
+        if trigger:
+            trg = trigger[1]
+            for k in PARSE_TRIGGERS.keys():
+               if trg.startswith(k):
+        if PARSE_TRIGGERS[trg] is ParseTypes.SINGLE:
+            # Format is <key>:<value>
+            # or
+            # <key>:
+            # <blank_line>[0,1]
+            # <value> - Assuming only a single line for now.
+            slp = single_line_parser(line)
+            if is_pair(slp):
+                # <k>:<v>
+                out[trg] = slp[1]
+            elif is_single(slp):
+                # <k>: \n\n?<v>\n
                 i += 1
                 while not lines[i]:
-                    i += 1 # advance to data
-                while lines[i]:
-                    slp = single_line_parser(lines[i])
-                    if is_pair(slp):
-                        out[trg][slp[0]] = slp[1]
                     i += 1
+                out[trg] = lines[i]
+        if PARSE_TRIGGERS[trg] is ParseTypes.MULTI:
+            # Assume sub values are either
+            # single line <k>:<v>
+            # or a comment
+            # The multi-block ends with a new line
+            out[trg] = dict()
+            i += 1
+            while not lines[i]:
+                i += 1  # advance to data
+            while lines[i]:
+                slp = single_line_parser(lines[i])
+                if is_pair(slp):
+                    out[trg][slp[0]] = slp[1]
+                i += 1
 
         i += 1
     return out
