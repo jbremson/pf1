@@ -1,58 +1,47 @@
 import argparse
+from enum import Enum
 from pprint import pprint
+import re
 from typing import List
+
+
 # Email Parser
 
-def single_line_parser(line: str) -> List:
-    """Return a two element list if the input of the line is
-        <key>: <value>
-
-        Returns a single element list if the input of the line is
-        <key>:
-        """
-    if line and line[0] in ["(","-","_"," "]:
-        return []
-    o = line.split(":", 1)
-    if len(o) == 2 and o[1] == '':
-        return [o[0]]
-    return o
+class ParseTypes(Enum):
+    SINGLE = 1
+    MULTI = 2
 
 
-def next_line_idx(i: int, lines: List) -> int:
-    """Return the index of the next non-empty line."""
-    i += 1
-    while not lines[i] and i < len(lines):
-        i += 1
-    return i
+PARSE_TRIGGERS = {'subject': ParseTypes.SINGLE,
+                  'body': ParseTypes.SINGLE,
+                  'customer': ParseTypes.SINGLE,
+                  'pw reference number': ParseTypes.SINGLE,
+                  'maintenance window': ParseTypes.MULTI,
+                  'location of work': ParseTypes.SINGLE,
+                  'affected services': ParseTypes.MULTI,
+                  'email': ParseTypes.SINGLE,
+                  'phone': ParseTypes.SINGLE}
 
-def is_pair(l: List) -> bool:
-    return len(l) == 2
+out = dict()
 
-def is_single(l: List) -> bool:
-    return len(l) == 1 and l[0] != ''
-
-
-
-def email_parser(body: str)-> dict:
+def email_parser(body: str) -> dict:
     lines = body.splitlines()
-    out = dict()
     i = 0
+
     while i < len(lines):
-        slp = single_line_parser(lines[i])
-        if is_pair(slp):
-            out[slp[0]] = slp[1]
-        elif is_single(slp):
-            i = next_line_idx(i, lines)
-            line = lines[i]
-            parsed_line = single_line_parser(line)
-            if is_single(parsed_line):
-                out[slp[0]] = parsed_line[0]
-            elif is_pair(parsed_line):
-                out[slp[0]] = "SOMETHING"
+        line = lines[i]
+        trigger = re.match(r'^([^:]+):', line.lower())
+        if trigger and trigger[1] in PARSE_TRIGGERS.keys():
+           if PARSE_TRIGGERS[trigger] is ParseTypes.SINGLE:
+               # Format is <key>:<value>
+               # or
+               # <key>:
+               # <blank_line>[0,1]
+               # <value> - Assuming only a single line for now.
+
+
 
         i += 1
-    return out
-
 
 
 if __name__ == '__main__':
@@ -62,6 +51,3 @@ if __name__ == '__main__':
     with open(args.filepath) as fh:
         body = fh.read()
     pprint(email_parser(body))
-
-
-
